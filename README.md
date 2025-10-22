@@ -46,12 +46,3 @@
    ```
    http://127.0.0.1:8000/
    ```
-
----
-
-## 💡 Dica
-Se o projeto usa variáveis de ambiente, crie um arquivo `.env` na raiz do projeto e defina as chaves necessárias antes de iniciar o servidor.
-
----
-
-© 2025 — Projeto Django
