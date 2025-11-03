@@ -21,7 +21,7 @@
      source venv/bin/activate
      ```
 
-3. **(Opcional) Instale as dependências**
+3. **Instale as dependências**
    ```bash
    pip install -r requirements.txt
    ```
