@@ -1,0 +1,298 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static %}
+
+{% block field_sets %}
+{% if original %}
+<div style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h3 style="margin: 0; color: #333;">
+                Status: <span style="color: #17a2b8; font-weight: bold;">{{ original.get_status_display }}</span>
+            </h3>
+        </div>
+        
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            {% if original.status == 'PENDENTE' %}
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" name="_em_transito" onclick="return confirm('Deseja marcar como Em Trânsito?');" class="btn btn-info" style="padding: 10px 20px; font-size: 14px; font-weight: bold;">
+                        🚚 Marcar Em Trânsito
+                    </button>
+                </form>
+            {% endif %}
+            
+            {% if original.status == 'EM_TRANSITO' %}
+                <button type="button" onclick="mostrarModalPagamento();" class="btn btn-success" style="padding: 10px 20px; font-size: 14px; font-weight: bold;">
+                    ✅ Confirmar Entrega
+                </button>
+            {% endif %}
+            
+            {% if original.status != 'CANCELADA' and original.status != 'ENTREGUE' %}
+                <form method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" name="_cancelada" onclick="return confirm('Deseja realmente CANCELAR esta entrega?');" class="btn btn-danger" style="padding: 10px 20px; font-size: 14px; font-weight: bold;">
+                        ❌ Cancelar
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{{ block.super }}
+{% endblock %}
+
+{% block after_related_objects %}
+{{ block.super }}
+
+{% if original %}
+<!-- Modal de Pagamento -->
+<div id="modalPagamento" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); overflow: auto;">
+    <div style="background: white; margin: 5% auto; padding: 0; width: 90%; max-width: 500px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        
+        <!-- Header do Modal -->
+        <div style="background: #28a745; color: white; padding: 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 24px;">✅ Confirmar Entrega</h2>
+            <button type="button" onclick="fecharModalPagamento()" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+        
+        <!-- Corpo do Modal -->
+        <form method="post">
+            {% csrf_token %}
+            <div style="padding: 30px;">
+                <p style="font-size: 16px; margin-bottom: 20px; color: #333;"><strong>Selecione o método de pagamento utilizado:</strong></p>
+
+                <div style="margin-bottom: 15px;">
+                    <label class="metodo-pagamento" style="display: block; padding: 15px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; margin-bottom: 12px; transition: all 0.3s;">
+                        <input type="radio" name="metodo" value="DINHEIRO" required style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 18px; vertical-align: middle;">💵 Dinheiro</span>
+                    </label>
+
+                    <label class="metodo-pagamento" style="display: block; padding: 15px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; margin-bottom: 12px; transition: all 0.3s;">
+                        <input type="radio" name="metodo" value="CARTAO" required style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 18px; vertical-align: middle;">💳 Cartão</span>
+                    </label>
+
+                    <label class="metodo-pagamento" style="display: block; padding: 15px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; margin-bottom: 12px; transition: all 0.3s;">
+                        <input type="radio" name="metodo" value="PIX" required style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 18px; vertical-align: middle;">📱 PIX</span>
+                    </label>
+
+                    <label class="metodo-pagamento" style="display: block; padding: 15px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; margin-bottom: 12px; transition: all 0.3s;">
+                        <input type="radio" name="metodo" value="BOLETO" required style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 18px; vertical-align: middle;">🧾 Boleto</span>
+                    </label>
+
+                    <label class="metodo-pagamento fiado-option" style="display: block; padding: 15px; border: 2px solid #ffc107; border-radius: 8px; cursor: pointer; margin-bottom: 12px; transition: all 0.3s; background-color: #fff3cd;">
+                        <input type="radio" name="metodo" value="FIADO" required style="margin-right: 12px; width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-size: 18px; vertical-align: middle;">📝 Fiado (Pagamento Pendente)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding: 20px 30px; background: #f8f9fa; border-radius: 0 0 10px 10px; text-align: right; border-top: 1px solid #dee2e6;">
+                <button type="button" onclick="fecharModalPagamento()" class="btn btn-secondary" style="padding: 12px 24px; margin-right: 10px; font-size: 16px;">Cancelar</button>
+                <button type="submit" name="_entregue" class="btn btn-success" style="padding: 12px 24px; font-size: 16px; font-weight: bold;">✅ Confirmar Entrega</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<script>
+(function() {
+    'use strict';
+
+    console.log("🚀 Script carregado!");
+
+    /* ========= MODAL ========= */
+    window.mostrarModalPagamento = function () {
+        const modal = document.getElementById('modalPagamento');
+        if (modal) {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            console.log("✅ Modal aberto");
+        }
+    };
+
+    window.fecharModalPagamento = function () {
+        const modal = document.getElementById('modalPagamento');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            console.log("✅ Modal fechado");
+        }
+    };
+
+    /* ========= BUSCAR ENDEREÇO (GLOBAL) ========= */
+    window.buscarEndereco = async function(clienteId) {
+        if (!clienteId) {
+            console.log("⚠️ Nenhum cliente selecionado");
+            return;
+        }
+
+        console.log(`📡 Buscando endereço do cliente ID: ${clienteId}`);
+
+        const enderecoField = document.querySelector("#id_endereco_entrega");
+        if (!enderecoField) {
+            console.error("❌ Campo de endereço não encontrado!");
+            return;
+        }
+
+        try {
+            // Busca a URL base do admin atual
+            const currentPath = window.location.pathname;
+            console.log(currentPath);
+            
+            const url = `http://localhost:8000/core/api/admin/entrega/add/auto-complete-endereco/${clienteId}`;
+            console.log(`🌐 URL da API: ${url}`);
+
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("📦 Dados recebidos:", data);
+
+            if (data.endereco) {
+                enderecoField.value = data.endereco;
+                console.log(`✅ Endereço preenchido: "${data.endereco}"`);
+                
+                // Feedback visual (borda verde)
+                enderecoField.style.transition = 'border-color 0.3s';
+                enderecoField.style.borderColor = '#28a745';
+                enderecoField.style.borderWidth = '2px';
+                
+                setTimeout(() => {
+                    enderecoField.style.borderColor = '';
+                    enderecoField.style.borderWidth = '';
+                }, 2000);
+            } else {
+                console.warn("⚠️ Endereço não encontrado na resposta");
+            }
+        } catch (error) {
+            console.error("❌ Erro ao buscar endereço:", error);
+        }
+    };
+
+    /* ========= INICIALIZAÇÃO ========= */
+    function inicializar() {
+        // Fechar modal com ESC
+        document.addEventListener('keydown', function (event) {
+            if (event.key === "Escape") {
+                window.fecharModalPagamento();
+            }
+        });
+
+        // Fechar modal ao clicar fora
+        const modal = document.getElementById('modalPagamento');
+        if (modal) {
+            modal.addEventListener("click", function (e) {
+                if (e.target.id === "modalPagamento") {
+                    window.fecharModalPagamento();
+                }
+            });
+        }
+
+        // Efeitos visuais nos labels de pagamento
+        const labels = document.querySelectorAll('.metodo-pagamento');
+        labels.forEach(function(label) {
+            label.addEventListener('mouseenter', function() {
+                if (!this.querySelector('input').checked) {
+                    if (this.classList.contains('fiado-option')) {
+                        this.style.borderColor = '#ff9800';
+                        this.style.backgroundColor = '#ffecb3';
+                    } else {
+                        this.style.borderColor = '#28a745';
+                        this.style.backgroundColor = '#f0f8f4';
+                    }
+                }
+            });
+            
+            label.addEventListener('mouseleave', function() {
+                if (!this.querySelector('input').checked) {
+                    if (this.classList.contains('fiado-option')) {
+                        this.style.borderColor = '#ffc107';
+                        this.style.backgroundColor = '#fff3cd';
+                    } else {
+                        this.style.borderColor = '#ddd';
+                        this.style.backgroundColor = 'white';
+                    }
+                }
+            });
+            
+            const radio = label.querySelector('input');
+            radio.addEventListener('change', function() {
+                labels.forEach(function(l) {
+                    if (l.classList.contains('fiado-option')) {
+                        l.style.borderColor = '#ffc107';
+                        l.style.backgroundColor = '#fff3cd';
+                    } else {
+                        l.style.borderColor = '#ddd';
+                        l.style.backgroundColor = 'white';
+                    }
+                    l.style.fontWeight = 'normal';
+                });
+                if (this.checked) {
+                    if (label.classList.contains('fiado-option')) {
+                        label.style.borderColor = '#ff9800';
+                        label.style.backgroundColor = '#ffe082';
+                    } else {
+                        label.style.borderColor = '#28a745';
+                        label.style.backgroundColor = '#d4edda';
+                    }
+                    label.style.fontWeight = 'bold';
+                }
+            });
+        });
+
+        // Configurar autocomplete de endereço
+        configurarAutocompleteEndereco();
+    }
+
+    /* ========= AUTOCOMPLETE DE ENDEREÇO ========= */
+    function configurarAutocompleteEndereco() {
+        // Esperar um pouco para garantir que o Select2 foi inicializado
+        setTimeout(function() {
+            const clienteSelect = document.querySelector("#id_cliente");
+            const enderecoField = document.querySelector("#id_endereco_entrega");
+
+            if (clienteSelect && enderecoField) {
+                console.log("✅ Campos encontrados! Configurando autocomplete de endereço...");
+
+                // Evento ao mudar o cliente (funciona com Select2)
+                $(clienteSelect).on('change', function() {
+                    const clienteId = this.value;
+                    console.log(`🔄 Cliente selecionado via change: ID ${clienteId}`);
+                    window.buscarEndereco(clienteId);
+                });
+
+                // Preencher automaticamente se já houver um cliente selecionado
+                const clienteIdInicial = clienteSelect.value;
+                if (clienteIdInicial) {
+                    console.log(`🔄 Cliente já selecionado ao carregar: ID ${clienteIdInicial}`);
+                    window.buscarEndereco(clienteIdInicial);
+                }
+            } else {
+                console.error("❌ Campos não encontrados!");
+                if (!clienteSelect) console.error("  - Campo #id_cliente não encontrado");
+                if (!enderecoField) console.error("  - Campo #id_endereco_entrega não encontrado");
+            }
+        }, 500); // Aguarda 500ms para o Select2 inicializar
+    }
+
+    // Inicializar quando o DOM estiver pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializar);
+    } else {
+        inicializar();
+    }
+
+})();
+</script>
+
+{% endblock %}
